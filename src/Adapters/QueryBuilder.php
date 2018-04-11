@@ -1,49 +1,60 @@
 <?php
-namespace DataTables\Adapters;
-use Phalcon\Paginator\Adapter\QueryBuilder as PQueryBuilder;
 
-class QueryBuilder extends AdapterInterface{
-  protected $builder;
+namespace LukeShard\DataTables\Adapters;
 
-  public function setBuilder($builder) {
-    $this->builder = $builder;
-  }
+use LukeShard\DataTables\ParameterBag;
+use LukeShard\DataTables\QueryBuilder\QueryBuilderInterface;
 
-  public function getResponse() {
-    $builder = new PQueryBuilder([
-      'builder' => $this->builder,
-      'limit'   => 1,
-      'page'    => 1,
-    ]);
+/**
+ * Class QueryBuilder
+ * @package LukeShard\DataTables\Adapters
+ */
+class QueryBuilder extends AdapterInterface
+{
+    /** @var QueryBuilderInterface $builder */
+    protected $builder;
 
-    $total = $builder->getPaginate();
+    /** @var ParameterBag $paramBag */
+    protected $params;
 
-    $this->bind('global_search', function($column, $search) {
-      $this->builder->orWhere("{$column} LIKE :key_{$column}:", ["key_{$column}" => "%{$search}%"]);
-    });
+    /**
+     * @return QueryBuilderInterface
+     */
+    public function getBuilder(): QueryBuilderInterface
+    {
+        return $this->builder;
+    }
 
-    $this->bind('column_search', function($column, $search) {
-      $this->builder->andWhere("{$column} LIKE :key_{$column}:", ["key_{$column}" => "%{$search}%"]);
-    });
+    /**
+     * @param QueryBuilderInterface $builder
+     */
+    public function setBuilder(QueryBuilderInterface $builder)
+    {
+        $this->builder = $builder;
+    }
 
-    $this->bind('order', function($order) {
-      if (!empty($order)) {
-        $this->builder->orderBy(implode(', ', $order));
-      }
-    });
+    /**
+     * @return ParameterBag
+     */
+    public function getParams(): ParameterBag
+    {
+        return $this->params;
+    }
 
-    $builder = new PQueryBuilder([
-      'builder' => $this->builder,
-      'limit'   => $this->parser->getLimit(),
-      'page'    => $this->parser->getPage(),
-    ]);
+    /**
+     * @param ParameterBag $params
+     */
+    public function setParams(ParameterBag $params)
+    {
+        $this->params = $params;
+    }
 
-    $filtered = $builder->getPaginate();
+    /**
+     * @author Lucas Freitas <lucas@lucasfreitas.me>
+     */
+    public function handleOrder() {
+        list($column, $dir) = $this->paramBag->getOrder();
+        $this->builder->orderBy($column, $dir);
+    }
 
-    return $this->formResponse([
-      'total'     => $total->total_items,
-      'filtered'  => $filtered->total_items,
-      'data'      => $filtered->items->toArray(),
-    ]);
-  }
 }
